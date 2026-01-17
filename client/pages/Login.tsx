@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, BookOpen, Users } from "lucide-react";
 
-type UserRole = "student" | "faculty" | "admin";
+type UserRole = "student" | "faculty" | "admin" | "security_guard";
 
 interface RoleOption {
   role: UserRole;
@@ -38,6 +38,13 @@ const roles: RoleOption[] = [
     icon: <Users className="w-8 h-8" />,
     color: "destructive",
   },
+  {
+    role: "security_guard",
+    label: "Security",
+    description: "Convert QR codes & verify leaves",
+    icon: <Users className="w-8 h-8" />, // Reusing icon or could import another like Shield
+    color: "slate-600",
+  },
 ];
 
 export default function Login() {
@@ -66,7 +73,7 @@ export default function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.email) {
       alert("Please fill in all required fields");
       return;
@@ -88,7 +95,7 @@ export default function Login() {
     };
 
     login(newUser);
-    
+
     // Navigate to appropriate dashboard
     switch (selectedRole) {
       case "student":
@@ -99,6 +106,9 @@ export default function Login() {
         break;
       case "admin":
         navigate("/admin/dashboard");
+        break;
+      case "security_guard":
+        navigate("/security/dashboard");
         break;
     }
   };

@@ -1,104 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, Clock } from "lucide-react";
-
-interface LeaveRequest {
-  id: string;
-  studentName: string;
-  studentId: string;
-  type: "casual" | "medical" | "emergency" | "holiday";
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  appliedOn: string;
-}
+import { db, LeaveRequest } from "@/lib/mock-db";
 
 export default function FacultyRequests() {
-  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([
-    {
-      id: "1",
-      studentName: "Raj Patel",
-      studentId: "REG2024001",
-      type: "casual",
-      startDate: "2024-02-25",
-      endDate: "2024-02-27",
-      reason: "Family visit",
-      status: "pending",
-      appliedOn: "2024-02-20",
-    },
-    {
-      id: "2",
-      studentName: "Sarah Johnson",
-      studentId: "REG2024015",
-      type: "medical",
-      startDate: "2024-02-28",
-      endDate: "2024-02-28",
-      reason: "Doctor appointment",
-      status: "pending",
-      appliedOn: "2024-02-26",
-    },
-    {
-      id: "3",
-      studentName: "Mike Chen",
-      studentId: "REG2024008",
-      type: "casual",
-      startDate: "2024-03-05",
-      endDate: "2024-03-07",
-      reason: "Project work",
-      status: "pending",
-      appliedOn: "2024-02-28",
-    },
-    {
-      id: "4",
-      studentName: "Emily Davis",
-      studentId: "REG2024020",
-      type: "medical",
-      startDate: "2024-02-15",
-      endDate: "2024-02-15",
-      reason: "Emergency",
-      status: "approved",
-      appliedOn: "2024-02-14",
-    },
-    {
-      id: "5",
-      studentName: "John Wilson",
-      studentId: "REG2024010",
-      type: "casual",
-      startDate: "2024-02-10",
-      endDate: "2024-02-11",
-      reason: "Personal",
-      status: "rejected",
-      appliedOn: "2024-02-08",
-    },
-  ]);
-
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [remarks, setRemarks] = useState("");
+
+  useEffect(() => {
+    // Load requests from "db"
+    setAllRequests(db.getAllRequests());
+
+    // In a real app we'd poll or use a subscription, here we can just reload on modify
+  }, []);
+
+  const refreshRequests = () => {
+    setAllRequests(db.getAllRequests());
+  };
 
   const filteredRequests = allRequests.filter(
     (req) => filterStatus === "all" || req.status === filterStatus
   );
 
   const handleApprove = (id: string) => {
-    setAllRequests((prev) =>
-      prev.map((req) =>
-        req.id === id ? { ...req, status: "approved" as const } : req
-      )
-    );
+    db.updateRequestStatus(id, "approved");
+    refreshRequests();
     setSelectedRequest(null);
     setRemarks("");
-    alert("Request approved!");
+    alert("Request approved! QR Code generated for student.");
   };
 
   const handleReject = (id: string) => {
-    setAllRequests((prev) =>
-      prev.map((req) =>
-        req.id === id ? { ...req, status: "rejected" as const } : req
-      )
-    );
+    db.updateRequestStatus(id, "rejected");
+    refreshRequests();
     setSelectedRequest(null);
     setRemarks("");
     alert("Request rejected!");
@@ -148,11 +85,10 @@ export default function FacultyRequests() {
           <button
             key={status}
             onClick={() => setFilterStatus(status as any)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filterStatus === status
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filterStatus === status
                 ? "bg-primary text-white"
                 : "bg-border text-foreground hover:bg-border/80"
-            }`}
+              }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
             {status === "pending" && ` (${allRequests.filter(r => r.status === "pending").length})`}
@@ -191,7 +127,7 @@ export default function FacultyRequests() {
                 <div>
                   <p className="text-xs text-muted-foreground">Registration</p>
                   <p className="text-sm font-medium text-foreground">
-                    {selectedRequest.studentId}
+                    {selectedRequest.registrationNumber}
                   </p>
                 </div>
               </div>
@@ -287,7 +223,7 @@ export default function FacultyRequests() {
                         {request.studentName}
                       </h3>
                       <span className="text-xs text-muted-foreground">
-                        {request.studentId}
+                        {request.registrationNumber}
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}

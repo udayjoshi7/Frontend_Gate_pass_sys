@@ -29,6 +29,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminSettings from "./pages/AdminSettings";
 import AdminReports from "./pages/AdminReports";
+import SecurityDashboard from "./pages/SecurityDashboard";
 
 const queryClient = new QueryClient();
 
@@ -218,6 +219,19 @@ const AppRoutes = () => {
             }
           />
         </>
+      )}
+
+      {/* Security Guard Routes */}
+      {user?.role === "security_guard" && (
+        <Route
+          path="/security/dashboard"
+          element={
+            <ProtectedRoute
+              element={<SecurityDashboard />}
+              requiredRole="security_guard"
+            />
+          }
+        />
       )}
 
       {/* Catch all */}

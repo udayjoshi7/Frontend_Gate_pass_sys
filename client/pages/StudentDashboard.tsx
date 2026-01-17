@@ -1,19 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Clock, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertCircle, CheckCircle, Clock, FileText, QrCode } from "lucide-react";
 import { Link } from "react-router-dom";
-
-interface LeaveRequest {
-  id: string;
-  type: "casual" | "medical" | "emergency" | "holiday";
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  appliedOn: string;
-}
+import QRCode from "react-qr-code";
+import { db, LeaveRequest } from "@/lib/mock-db";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -23,26 +16,14 @@ export default function StudentDashboard() {
     emergency: { used: 0, total: 3 },
   });
 
-  const [recentRequests] = useState<LeaveRequest[]>([
-    {
-      id: "1",
-      type: "casual",
-      startDate: "2024-02-15",
-      endDate: "2024-02-17",
-      reason: "Personal work",
-      status: "approved",
-      appliedOn: "2024-02-10",
-    },
-    {
-      id: "2",
-      type: "medical",
-      startDate: "2024-02-20",
-      endDate: "2024-02-20",
-      reason: "Doctor appointment",
-      status: "pending",
-      appliedOn: "2024-02-18",
-    },
-  ]);
+  const [recentRequests, setRecentRequests] = useState<LeaveRequest[]>([]);
+  const [selectedPass, setSelectedPass] = useState<LeaveRequest | null>(null);
+
+  useEffect(() => {
+    // In a real app, we would filter by user.id
+    // For this mock, we just get all requests to simulate the shared DB
+    setRecentRequests(db.getAllRequests());
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -167,6 +148,60 @@ export default function StudentDashboard() {
                     <p className="text-sm text-muted-foreground">
                       Reason: {request.reason}
                     </p>
+
+                    {request.status === "approved" && request.qrCodeToken && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="mt-2 text-primary border-primary hover:bg-primary/10">
+                            <QrCode className="w-4 h-4 mr-2" />
+                            View Exit Pass
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Exit Verification Pass</DialogTitle>
+                          </DialogHeader>
+                          <div className="flex flex-col items-center justify-center p-6 space-y-4">
+                            <div className="bg-white p-4 rounded-xl shadow-lg">
+                              <QRCode
+                                value={request.qrCodeToken}
+                                size={200}
+                                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                viewBox={`0 0 256 256`}
+                              />
+                            </div>
+                            <div className="text-center space-y-1">
+                              <p className="font-mono text-xs text-muted-foreground">{request.qrCodeToken}</p>
+                              {request.qrCodeExpiresAt && (
+                                <p className="text-sm text-destructive font-medium">
+                                  Expires: {new Date(request.qrCodeExpiresAt).toLocaleString()}
+                                </p>
+                              )}
+                              {request.isScanned ? (
+                                <p className="text-green-600 font-bold flex items-center justify-center gap-2">
+                                  <CheckCircle className="w-4 h-4" /> Verified & Exited
+                                </p>
+                              ) : (
+                                <p className="text-amber-600 font-medium">
+                                  Pending Verification
+                                </p>
+                              )}
+                            </div>
+                            <div className="w-full bg-muted/50 p-4 rounded-lg text-sm space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Student:</span>
+                                <span className="font-medium">{request.studentName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Reg No:</span>
+                                <span className="font-medium">{request.registrationNumber}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+
                   </div>
                   <div className="text-right text-xs text-muted-foreground">
                     Applied on<br />
@@ -176,6 +211,11 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
           ))}
+          {recentRequests.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No recent requests found.
+            </div>
+          )}
         </div>
       </div>
     </div>

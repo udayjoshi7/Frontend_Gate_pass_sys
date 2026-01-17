@@ -23,6 +23,8 @@
   "dependencies": {
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "html5-qrcode": "^2.3.8",
+    "react-qr-code": "^2.0.18",
     "zod": "^3.25.76"
   },
   "devDependencies": {
