@@ -3,10 +3,10 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertCircle, CheckCircle, Clock, FileText, QrCode } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, FileText, QrCode, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import QRCode from "react-qr-code";
-import { db, LeaveRequest } from "@/lib/mock-db";
+import { dbService, LeaveRequest } from "@/lib/db";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -19,11 +19,16 @@ export default function StudentDashboard() {
   const [recentRequests, setRecentRequests] = useState<LeaveRequest[]>([]);
   const [selectedPass, setSelectedPass] = useState<LeaveRequest | null>(null);
 
+  const fetchRequests = async () => {
+    if (user?.id) {
+      const requests = await dbService.getStudentRequests(user.id);
+      setRecentRequests(requests);
+    }
+  };
+
   useEffect(() => {
-    // In a real app, we would filter by user.id
-    // For this mock, we just get all requests to simulate the shared DB
-    setRecentRequests(db.getAllRequests());
-  }, []);
+    fetchRequests();
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -120,7 +125,17 @@ export default function StudentDashboard() {
       {/* Recent Requests */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-foreground">Recent Requests</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-foreground">Recent Requests</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={fetchRequests}
+              className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors active:rotate-180"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
           <Link to="/student/requests" className="text-primary hover:underline text-sm">
             View All →
           </Link>

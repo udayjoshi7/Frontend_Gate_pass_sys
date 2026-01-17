@@ -1,65 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, Clock, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-
-interface LeaveRequest {
-  id: string;
-  studentName: string;
-  studentId: string;
-  type: "casual" | "medical" | "emergency" | "holiday";
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  appliedOn: string;
-}
+import { dbService, LeaveRequest } from "@/lib/db";
 
 export default function FacultyDashboard() {
   const { user } = useAuth();
-  const [pendingRequests] = useState<LeaveRequest[]>([
-    {
-      id: "1",
-      studentName: "Raj Patel",
-      studentId: "REG2024001",
-      type: "casual",
-      startDate: "2024-02-25",
-      endDate: "2024-02-27",
-      reason: "Family visit",
-      status: "pending",
-      appliedOn: "2024-02-20",
-    },
-    {
-      id: "2",
-      studentName: "Sarah Johnson",
-      studentId: "REG2024015",
-      type: "medical",
-      startDate: "2024-02-28",
-      endDate: "2024-02-28",
-      reason: "Doctor appointment",
-      status: "pending",
-      appliedOn: "2024-02-26",
-    },
-    {
-      id: "3",
-      studentName: "Mike Chen",
-      studentId: "REG2024008",
-      type: "casual",
-      startDate: "2024-03-05",
-      endDate: "2024-03-07",
-      reason: "Project work",
-      status: "pending",
-      appliedOn: "2024-02-28",
-    },
-  ]);
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      setIsLoading(true);
+      if (user?.department) {
+        const requests = await dbService.getFacultyRequests(user.department);
+        setAllRequests(requests);
+      }
+      setIsLoading(false);
+    };
+    fetchRequests();
+  }, [user]);
+
+  const pendingRequests = allRequests.filter(r => r.status === "pending");
 
   const stats = {
     pending: pendingRequests.length,
-    approved: 24,
-    rejected: 3,
-    students: 45,
+    approved: allRequests.filter(r => r.status === "approved").length,
+    rejected: allRequests.filter(r => r.status === "rejected").length,
+    students: new Set(allRequests.map(r => r.studentId)).size || 0,
   };
 
   const getStatusColor = (status: string) => {

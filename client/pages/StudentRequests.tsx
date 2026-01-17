@@ -1,52 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, CheckCircle, Clock } from "lucide-react";
-
-interface LeaveRequest {
-  id: string;
-  type: "casual" | "medical" | "emergency" | "holiday";
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  appliedOn: string;
-}
+import { dbService, LeaveRequest } from "@/lib/db";
+import { useAuth } from "@/context/AuthContext";
 
 export default function StudentRequests() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
-  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([
-    {
-      id: "1",
-      type: "casual",
-      startDate: "2024-02-15",
-      endDate: "2024-02-17",
-      reason: "Personal work",
-      status: "approved",
-      appliedOn: "2024-02-10",
-    },
-    {
-      id: "2",
-      type: "medical",
-      startDate: "2024-02-20",
-      endDate: "2024-02-20",
-      reason: "Doctor appointment",
-      status: "pending",
-      appliedOn: "2024-02-18",
-    },
-    {
-      id: "3",
-      type: "casual",
-      startDate: "2024-03-01",
-      endDate: "2024-03-03",
-      reason: "Family visit",
-      status: "rejected",
-      appliedOn: "2024-02-25",
-    },
-  ]);
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      dbService.getStudentRequests(user.id).then(setAllRequests);
+    }
+  }, [user]);
 
   const [formData, setFormData] = useState({
     type: "casual",
@@ -55,7 +26,7 @@ export default function StudentRequests() {
     reason: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.startDate || !formData.endDate || !formData.reason) {
@@ -63,20 +34,31 @@ export default function StudentRequests() {
       return;
     }
 
-    const newRequest: LeaveRequest = {
-      id: (allRequests.length + 1).toString(),
-      type: formData.type as "casual" | "medical" | "emergency" | "holiday",
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      reason: formData.reason,
-      status: "pending",
-      appliedOn: new Date().toISOString().split("T")[0],
-    };
+    if (!user) {
+      alert("User not authenticated");
+      return;
+    }
 
-    setAllRequests([newRequest, ...allRequests]);
-    setFormData({ type: "casual", startDate: "", endDate: "", reason: "" });
-    setShowForm(false);
-    alert("Request submitted successfully!");
+    try {
+      const newReq = await dbService.addRequest({
+        studentId: user.id,
+        studentName: user.name,
+        registrationNumber: user.registrationNumber || "N/A",
+        department: user.department || "General",
+        type: formData.type as any,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        reason: formData.reason,
+      });
+
+      setAllRequests([newReq, ...allRequests]);
+      setFormData({ type: "casual", startDate: "", endDate: "", reason: "" });
+      setShowForm(false);
+      alert("Request submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting request:", error);
+      alert("Failed to submit request. Please try again.");
+    }
   };
 
   const getStatusColor = (status: string) => {

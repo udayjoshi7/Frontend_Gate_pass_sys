@@ -1,95 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, AlertCircle, Clock } from "lucide-react";
-
-interface HistoryRecord {
-  id: string;
-  type: "casual" | "medical" | "emergency" | "holiday";
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: "pending" | "approved" | "rejected";
-  appliedOn: string;
-  respondedOn?: string;
-  respondedBy?: string;
-  remarks?: string;
-}
+import { dbService, LeaveRequest } from "@/lib/db";
+import { useAuth } from "@/context/AuthContext";
 
 export default function StudentHistory() {
-  const [historyRecords] = useState<HistoryRecord[]>([
-    {
-      id: "1",
-      type: "casual",
-      startDate: "2024-01-10",
-      endDate: "2024-01-12",
-      reason: "Personal work",
-      status: "approved",
-      appliedOn: "2024-01-08",
-      respondedOn: "2024-01-09",
-      respondedBy: "Dr. John Smith",
-      remarks: "Approved",
-    },
-    {
-      id: "2",
-      type: "medical",
-      startDate: "2024-01-20",
-      endDate: "2024-01-20",
-      reason: "Doctor appointment",
-      status: "approved",
-      appliedOn: "2024-01-18",
-      respondedOn: "2024-01-18",
-      respondedBy: "Dr. John Smith",
-      remarks: "Approved",
-    },
-    {
-      id: "3",
-      type: "casual",
-      startDate: "2023-12-20",
-      endDate: "2023-12-22",
-      reason: "Festival celebration",
-      status: "approved",
-      appliedOn: "2023-12-15",
-      respondedOn: "2023-12-16",
-      respondedBy: "Dr. Sarah Johnson",
-      remarks: "Approved",
-    },
-    {
-      id: "4",
-      type: "emergency",
-      startDate: "2023-12-10",
-      endDate: "2023-12-10",
-      reason: "Family emergency",
-      status: "approved",
-      appliedOn: "2023-12-10",
-      respondedOn: "2023-12-10",
-      respondedBy: "Dr. John Smith",
-      remarks: "Approved",
-    },
-    {
-      id: "5",
-      type: "casual",
-      startDate: "2023-11-15",
-      endDate: "2023-11-17",
-      reason: "Travel",
-      status: "rejected",
-      appliedOn: "2023-11-10",
-      respondedOn: "2023-11-12",
-      respondedBy: "Dr. Sarah Johnson",
-      remarks: "During exam period",
-    },
-    {
-      id: "6",
-      type: "medical",
-      startDate: "2023-10-25",
-      endDate: "2023-10-26",
-      reason: "Illness",
-      status: "approved",
-      appliedOn: "2023-10-25",
-      respondedOn: "2023-10-25",
-      respondedBy: "Dr. John Smith",
-      remarks: "Approved",
-    },
-  ]);
+  const { user } = useAuth();
+  const [historyRecords, setHistoryRecords] = useState<LeaveRequest[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      dbService.getStudentRequests(user.id).then(setHistoryRecords);
+    }
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -243,9 +166,9 @@ export default function StudentHistory() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Responded On</p>
-                          <p className="text-sm font-medium text-foreground">
-                            {record.respondedOn}
+                          <p className="text-xs text-muted-foreground">Exit Status</p>
+                          <p className={`text-sm font-bold ${record.isScanned ? "text-success" : "text-warning"}`}>
+                            {record.isScanned ? "✓ Exited" : "Still Inside"}
                           </p>
                         </div>
                       </>

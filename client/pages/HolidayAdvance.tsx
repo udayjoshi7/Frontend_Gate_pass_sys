@@ -1,41 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, Clock } from "lucide-react";
-
-interface HolidayAdvance {
-  id: string;
-  holiday: string;
-  requestedDays: number;
-  startDate: string;
-  endDate: string;
-  status: "pending" | "approved" | "rejected";
-  appliedOn: string;
-}
+import { dbService, LeaveRequest } from "@/lib/db";
+import { useAuth } from "@/context/AuthContext";
 
 export default function HolidayAdvance() {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
-  const [advanceRequests, setAdvanceRequests] = useState<HolidayAdvance[]>([
-    {
-      id: "1",
-      holiday: "Christmas Holiday",
-      requestedDays: 7,
-      startDate: "2024-12-20",
-      endDate: "2024-12-27",
-      status: "pending",
-      appliedOn: "2024-11-15",
-    },
-    {
-      id: "2",
-      holiday: "Summer Vacation",
-      requestedDays: 30,
-      startDate: "2024-05-15",
-      endDate: "2024-06-14",
-      status: "approved",
-      appliedOn: "2024-04-10",
-    },
-  ]);
+  const [advanceRequests, setAdvanceRequests] = useState<LeaveRequest[]>([]);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      if (user?.id) {
+        const allRequests = await dbService.getStudentRequests(user.id);
+        // Filter for 'holiday' type requests only
+        setAdvanceRequests(allRequests.filter(req => req.type === "holiday"));
+      }
+    };
+    fetchRequests();
+  }, [user]);
 
   const [formData, setFormData] = useState({
     holiday: "",
@@ -54,7 +39,7 @@ export default function HolidayAdvance() {
     return 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.holiday || !formData.startDate || !formData.endDate) {
@@ -62,22 +47,31 @@ export default function HolidayAdvance() {
       return;
     }
 
-    const days = calculateDays(formData.startDate, formData.endDate);
-    
-    const newRequest: HolidayAdvance = {
-      id: (advanceRequests.length + 1).toString(),
-      holiday: formData.holiday,
-      requestedDays: days,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      status: "pending",
-      appliedOn: new Date().toISOString().split("T")[0],
-    };
+    if (!user) {
+      alert("User not authenticated");
+      return;
+    }
 
-    setAdvanceRequests([newRequest, ...advanceRequests]);
-    setFormData({ holiday: "", startDate: "", endDate: "", reason: "" });
-    setShowForm(false);
-    alert("Holiday advance request submitted!");
+    try {
+      const newReq = await dbService.addRequest({
+        studentId: user.id,
+        studentName: user.name,
+        registrationNumber: user.registrationNumber || "N/A",
+        department: user.department || "General",
+        type: "holiday",
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        reason: `${formData.holiday}: ${formData.reason}`, // Combine holiday name and reason as we don't have separate field in LeaveRequest yet
+      });
+
+      setAdvanceRequests([newReq, ...advanceRequests]);
+      setFormData({ holiday: "", startDate: "", endDate: "", reason: "" });
+      setShowForm(false);
+      alert("Holiday advance request submitted!");
+    } catch (error) {
+      console.error("Error submitting holiday request:", error);
+      alert("Failed to submit request.");
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -253,7 +247,7 @@ export default function HolidayAdvance() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-foreground">
-                        {request.holiday}
+                        {request.reason.split(":")[0]}
                       </h3>
                       <span
                         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
@@ -266,7 +260,7 @@ export default function HolidayAdvance() {
                       {request.startDate} to {request.endDate}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      <strong>{request.requestedDays}</strong> days requested
+                      <strong>{calculateDays(request.startDate, request.endDate)}</strong> days requested
                     </p>
                   </div>
                   <div className="text-right text-xs text-muted-foreground">

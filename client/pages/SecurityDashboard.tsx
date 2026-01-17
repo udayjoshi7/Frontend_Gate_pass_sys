@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { db, LeaveRequest } from "@/lib/mock-db";
+import { dbService, LeaveRequest } from "@/lib/db";
 import { CheckCircle, XCircle, Search, LogOut } from "lucide-react";
 import { Toaster, toast } from "sonner";
 
@@ -45,8 +45,8 @@ export default function SecurityDashboard() {
         }
     }, [scanActive]);
 
-    const handleVerify = (token: string) => {
-        const result = db.scanQRCode(token);
+    const handleVerify = async (token: string) => {
+        const result = await dbService.scanQRCode(token);
         setVerificationResult(result);
         if (result.success) {
             toast.success(result.message);

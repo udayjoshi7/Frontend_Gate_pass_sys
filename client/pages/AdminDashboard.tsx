@@ -1,26 +1,59 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, Settings, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [stats] = useState({
-    totalUsers: 385,
-    students: 320,
-    faculty: 45,
-    admins: 5,
-    totalRequests: 1240,
-    pendingRequests: 23,
-    approvalRate: 92.5,
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    students: 0,
+    faculty: 0,
+    security: 0,
+    admins: 0,
+    totalRequests: 0,
+    pendingRequests: 0,
+    approvalRate: 0,
     monthlyTrend: [
       { month: "Jan", value: 85 },
       { month: "Feb", value: 120 },
       { month: "Mar", value: 98 },
     ],
   });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const usersList = usersSnapshot.docs.map(doc => doc.data());
+
+        const requestsSnapshot = await getDocs(collection(db, "leave_requests"));
+        const requestsList = requestsSnapshot.docs.map(doc => doc.data());
+
+        const approvedCount = requestsList.filter(r => r.status === "approved").length;
+        const totalReq = requestsList.length;
+
+        setStats(prev => ({
+          ...prev,
+          totalUsers: usersList.length,
+          students: usersList.filter(u => u.role === "student").length,
+          faculty: usersList.filter(u => u.role === "faculty").length,
+          security: usersList.filter(u => u.role === "security_guard").length,
+          admins: usersList.filter(u => u.role === "admin").length,
+          totalRequests: totalReq,
+          pendingRequests: requestsList.filter(r => r.status === "pending").length,
+          approvalRate: totalReq > 0 ? (approvedCount / totalReq) * 100 : 0,
+        }));
+      } catch (error) {
+        console.error("Error fetching admin stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
 
   return (
     <div className="space-y-8">

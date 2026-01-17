@@ -2,40 +2,44 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, Clock } from "lucide-react";
-import { db, LeaveRequest } from "@/lib/mock-db";
+import { dbService, LeaveRequest } from "@/lib/db";
+import { useAuth } from "@/context/AuthContext";
 
 export default function FacultyRequests() {
+  const { user } = useAuth();
   const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [remarks, setRemarks] = useState("");
 
   useEffect(() => {
-    // Load requests from "db"
-    setAllRequests(db.getAllRequests());
+    refreshRequests();
+  }, [user]);
 
-    // In a real app we'd poll or use a subscription, here we can just reload on modify
-  }, []);
-
-  const refreshRequests = () => {
-    setAllRequests(db.getAllRequests());
+  const refreshRequests = async () => {
+    if (user?.department) {
+      setAllRequests(await dbService.getFacultyRequests(user.department));
+    } else {
+      // For admin or if no department, maybe show all (but here we strictly filter for faculty branch)
+      setAllRequests(await dbService.getAllRequests());
+    }
   };
 
   const filteredRequests = allRequests.filter(
     (req) => filterStatus === "all" || req.status === filterStatus
   );
 
-  const handleApprove = (id: string) => {
-    db.updateRequestStatus(id, "approved");
-    refreshRequests();
+  const handleApprove = async (id: string) => {
+    await dbService.updateRequestStatus(id, "approved", user?.name);
+    await refreshRequests();
     setSelectedRequest(null);
     setRemarks("");
-    alert("Request approved! QR Code generated for student.");
+    alert("Request approved!");
   };
 
-  const handleReject = (id: string) => {
-    db.updateRequestStatus(id, "rejected");
-    refreshRequests();
+  const handleReject = async (id: string) => {
+    await dbService.updateRequestStatus(id, "rejected", user?.name);
+    await refreshRequests();
     setSelectedRequest(null);
     setRemarks("");
     alert("Request rejected!");
@@ -86,8 +90,8 @@ export default function FacultyRequests() {
             key={status}
             onClick={() => setFilterStatus(status as any)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${filterStatus === status
-                ? "bg-primary text-white"
-                : "bg-border text-foreground hover:bg-border/80"
+              ? "bg-primary text-white"
+              : "bg-border text-foreground hover:bg-border/80"
               }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
